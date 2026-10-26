@@ -407,11 +407,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Place Demo Order Handler
+    // Place Order Handler: Submit the cart to the Flask checkout API.
     if (placeOrderBtn) {
-        placeOrderBtn.addEventListener('click', () => {
-            const name = (checkoutNameInput ? checkoutNameInput.value.trim() : '') || 'Valued Customer';
-            const address = checkoutAddressInput ? checkoutAddressInput.value.trim() : '';
+        placeOrderBtn.addEventListener('click', async () => {
+            if (cart.length === 0) {
+                showToast('Your cart is empty. Add products before checkout.');
+                return;
+            }
+
+            const name = checkoutNameInput
+                ? checkoutNameInput.value.trim()
+                : '';
+
+            const address = checkoutAddressInput
+                ? checkoutAddressInput.value.trim()
+                : '';
 
             if (!name) {
                 showToast('Please enter your name.');
@@ -425,30 +435,91 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-            const orderIdNum = Math.floor(10000 + Math.random() * 90000);
-            const orderIdStr = `SP-${orderIdNum}`;
+            const selectedPaymentRadio = document.querySelector(
+                'input[name="payment-method"]:checked'
+            );
 
-            const selectedPaymentRadio = document.querySelector('input[name="payment-method"]:checked');
-            const paymentMode = selectedPaymentRadio && selectedPaymentRadio.value === 'upi' ? 'UPI Simulation' : 'Cash on Delivery';
+            const paymentMode =
+                selectedPaymentRadio && selectedPaymentRadio.value === 'upi'
+                    ? 'UPI Simulation'
+                    : 'Cash on Delivery (Demo)';
 
-            // Populate success receipt
-            if (confirmedOrderId) confirmedOrderId.textContent = orderIdStr;
-            if (confirmedCustomerName) confirmedCustomerName.textContent = name;
-            if (confirmedOrderTotal) confirmedOrderTotal.textContent = `₹${totalAmount.toLocaleString('en-IN')}`;
-            if (confirmedPaymentMethod) confirmedPaymentMethod.textContent = paymentMode;
+            // Send only product IDs and quantities.
+            // The server calculates the authoritative total.
+            const requestBody = {
+                customer_name: name,
+                items: cart.map(item => ({
+                    id: item.id,
+                    quantity: item.quantity
+                }))
+            };
 
-            // Clear cart state
-            cart = [];
-            renderCart();
-            closeCart();
+            const originalButtonText = placeOrderBtn.textContent;
+            placeOrderBtn.disabled = true;
+            placeOrderBtn.textContent = 'Processing Order...';
 
-            // Transition to success confirmation view
-            if (checkoutFormView) checkoutFormView.classList.add('hidden');
-            if (checkoutSuccessView) checkoutSuccessView.classList.remove('hidden');
+            try {
+                const response = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
 
-            showToast(`Order ${orderIdStr} placed successfully! (Demo)`);
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok || result.status !== 'success') {
+                    throw new Error(
+                        result.message || 'Checkout could not be completed.'
+                    );
+                }
+
+                // Use the server's order ID and server-calculated total.
+                if (confirmedOrderId) {
+                    confirmedOrderId.textContent = result.order_id;
+                }
+
+                if (confirmedCustomerName) {
+                    confirmedCustomerName.textContent =
+                        result.customer_name || name;
+                }
+
+                if (confirmedOrderTotal) {
+                    confirmedOrderTotal.textContent =
+                        `₹${Number(result.total_amount).toLocaleString('en-IN')}`;
+                }
+
+                if (confirmedPaymentMethod) {
+                    confirmedPaymentMethod.textContent = paymentMode;
+                }
+
+                // Clear the cart only after the server confirms success.
+                cart = [];
+                renderCart();
+                closeCart();
+
+                if (checkoutFormView) {
+                    checkoutFormView.classList.add('hidden');
+                }
+
+                if (checkoutSuccessView) {
+                    checkoutSuccessView.classList.remove('hidden');
+                }
+
+                showToast(`Order ${result.order_id} confirmed! (Demo)`);
+            } catch (error) {
+                console.error('ShopSphere checkout failed:', error);
+                showToast(
+                    error.message ||
+                    'Unable to reach the checkout service. Please try again.'
+                );
+                // Preserve the cart so the customer can retry.
+            } finally {
+                placeOrderBtn.disabled = false;
+                placeOrderBtn.textContent = originalButtonText;
+            }
         });
     }
 

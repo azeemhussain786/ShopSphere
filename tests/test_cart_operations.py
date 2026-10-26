@@ -1,127 +1,131 @@
+
 """
-ShopSphere Automation Test Suite - Shopping Cart & Checkout Validation
-Tests adding items, badge incrementing, quantity adjustments, subtotal math, and empty-cart guards.
+ShopSphere Automation Test Suite - Shopping Cart & Checkout
+Covers cart operations, empty-cart validation, and API-backed checkout.
 """
+
+import re
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.home_page import HomePage
 from pages.cart_drawer import CartDrawer
 
 
 def test_add_to_cart_increments_badge_and_shows_toast(driver, base_url):
-    """
-    Test Case: Add Product to Cart
-    1. Loads homepage with a fresh in-memory cart (badge = 0).
-    2. Clicks 'Add to Cart' on product ID 1 (Aura Pro Wireless ANC Headphones).
-    3. Verifies that the top navigation cart badge increments immediately to 1.
-    4. Verifies that the confirmation toast appears with the correct product name.
-    """
+    """Adding a product updates the cart badge and confirmation toast."""
     home_page = HomePage(driver, base_url)
     home_page.load()
 
-    # Initial state verification
-    assert home_page.get_cart_badge_count() == 0, "Cart badge should initially be 0."
+    assert home_page.get_cart_badge_count() == 0
 
-    # Add Product ID 1 (Aura Pro Wireless ANC Headphones)
     home_page.add_product_to_cart_by_id(1)
 
-    # Verify navbar badge increments to 1
-    badge_count = home_page.get_cart_badge_count()
-    assert badge_count == 1, (
-        f"Expected cart badge to be 1 after adding 1 item, but got {badge_count}."
-    )
-
-    # Verify toast notification message
-    toast_text = home_page.get_toast_message()
-    assert "Aura Pro Wireless ANC Headphones" in toast_text, (
-        f"Expected toast to mention 'Aura Pro Wireless ANC Headphones', but got '{toast_text}'."
-    )
+    assert home_page.get_cart_badge_count() == 1
+    assert "Aura Pro Wireless ANC Headphones" in home_page.get_toast_message()
 
 
 def test_cart_drawer_quantity_increase_and_subtotal(driver, base_url):
-    """
-    Test Case: Increase Item Quantity & Validate Recalculated Subtotals
-    1. Loads homepage and adds Product ID 1 (Aura Pro Wireless ANC Headphones @ ₹4,999).
-    2. Opens the cart drawer and confirms it is open.
-    3. Verifies initial quantity is 1, line subtotal is ₹4,999.0, and cart total is ₹4,999.0.
-    4. Clicks '+' to increase quantity to 2.
-    5. Verifies quantity updates to 2.
-    6. Verifies line item subtotal and cart total recalculate to ₹9,998.0 (2 * ₹4,999).
-    """
+    """Increasing quantity updates the line subtotal and cart total."""
     home_page = HomePage(driver, base_url)
     home_page.load()
-
-    # Add Product 1 (@ ₹4,999)
     home_page.add_product_to_cart_by_id(1)
-
-    # Open cart drawer
     home_page.open_cart_drawer()
+
     cart_drawer = CartDrawer(driver)
-    assert cart_drawer.is_drawer_open(), "Cart drawer should be open."
+    assert cart_drawer.is_drawer_open()
+    assert cart_drawer.get_item_quantity(1) == 1
+    assert cart_drawer.get_subtotal_amount() == 4999.0
+    assert cart_drawer.get_total_amount() == 4999.0
 
-    # Verify initial quantity & price
-    assert cart_drawer.get_item_quantity(1) == 1, "Initial item quantity should be 1."
-    assert cart_drawer.get_subtotal_amount() == 4999.0, "Initial subtotal should be ₹4,999."
-    assert cart_drawer.get_total_amount() == 4999.0, "Initial total should be ₹4,999."
-
-    # Increase quantity to 2
     cart_drawer.increase_quantity(1)
 
-    # Verify updated quantity
-    updated_qty = cart_drawer.get_item_quantity(1)
-    assert updated_qty == 2, (
-        f"Expected quantity to be 2 after clicking '+', but got {updated_qty}."
-    )
-
-    # Verify recalculated subtotals (2 * 4999 = 9998)
-    expected_subtotal = 4999.0 * 2
-    item_subtotal = cart_drawer.get_item_subtotal(1)
-    cart_subtotal = cart_drawer.get_subtotal_amount()
-    cart_total = cart_drawer.get_total_amount()
-
-    assert item_subtotal == expected_subtotal, (
-        f"Expected line subtotal to be ₹{expected_subtotal}, got ₹{item_subtotal}."
-    )
-    assert cart_subtotal == expected_subtotal, (
-        f"Expected cart subtotal to be ₹{expected_subtotal}, got ₹{cart_subtotal}."
-    )
-    assert cart_total == expected_subtotal, (
-        f"Expected cart total to be ₹{expected_subtotal}, got ₹{cart_total}."
-    )
+    assert cart_drawer.get_item_quantity(1) == 2
+    assert cart_drawer.get_item_subtotal(1) == 9998.0
+    assert cart_drawer.get_subtotal_amount() == 9998.0
+    assert cart_drawer.get_total_amount() == 9998.0
 
 
 def test_empty_cart_checkout_validation(driver, base_url):
+    """Checkout is blocked when the cart is empty."""
+    home_page = HomePage(driver, base_url)
+    home_page.load()
+    home_page.open_cart_drawer()
+
+    cart_drawer = CartDrawer(driver)
+    assert cart_drawer.is_drawer_open()
+    assert cart_drawer.is_empty_state_visible()
+
+    cart_drawer.proceed_to_checkout()
+
+    assert "empty" in cart_drawer.get_validation_toast_message().lower()
+    assert not cart_drawer.is_checkout_modal_open()
+
+
+def test_successful_checkout_uses_flask_api(driver, base_url):
     """
-    Test Case: Empty Cart Checkout Guard & Validation
-    1. Loads homepage with a fresh, empty cart.
-    2. Opens the cart drawer.
-    3. Verifies the empty cart illustration/state is visible.
-    4. Triggers checkout on the empty cart.
-    5. Verifies that checkout is blocked, validation toast is displayed,
-       and the checkout modal is NOT opened.
+    Verify a browser checkout submits an order to Flask and displays
+    the server-generated order ID and server-calculated total.
     """
     home_page = HomePage(driver, base_url)
     home_page.load()
-
-    # Open cart drawer without adding any items
+    home_page.add_product_to_cart_by_id(1)
     home_page.open_cart_drawer()
+
     cart_drawer = CartDrawer(driver)
-    assert cart_drawer.is_drawer_open(), "Cart drawer should be open."
-
-    # Verify empty state is rendered
-    assert cart_drawer.is_empty_state_visible(), (
-        "Empty cart state message should be displayed when cart contains no items."
-    )
-
-    # Trigger checkout action
+    assert cart_drawer.is_drawer_open()
     cart_drawer.proceed_to_checkout()
 
-    # Verify empty cart warning toast appears
-    toast_msg = cart_drawer.get_validation_toast_message()
-    assert "empty" in toast_msg.lower(), (
-        f"Expected validation toast to indicate cart is empty, but got '{toast_msg}'."
+    wait = WebDriverWait(driver, 10)
+
+    wait.until(
+        EC.visibility_of_element_located((By.ID, "checkout-modal"))
     )
 
-    # Verify checkout modal was NOT opened
-    assert not cart_drawer.is_checkout_modal_open(), (
-        "Checkout modal should not open when attempting to checkout with an empty cart."
+    wait.until(
+        EC.element_to_be_clickable((By.ID, "place-order-btn"))
+    ).click()
+
+    def success_view_is_visible(browser):
+        element = browser.find_element(By.ID, "checkout-success-view")
+        classes = (element.get_attribute("class") or "").split()
+        if element.is_displayed() and "hidden" not in classes:
+            return element
+        return False
+
+    success_view = wait.until(success_view_is_visible)
+    assert success_view.is_displayed()
+
+    order_id = wait.until(
+        EC.visibility_of_element_located((By.ID, "confirmed-order-id"))
+    ).text.strip()
+
+    assert re.fullmatch(r"SP-\d{5}", order_id), (
+        f"Expected an order ID like SP-12345, got {order_id!r}"
     )
+
+    customer_name = driver.find_element(
+        By.ID, "confirmed-customer-name"
+    ).text.strip()
+    assert customer_name == "Rahul Sharma"
+
+    confirmed_total = driver.find_element(
+        By.ID, "confirmed-order-total"
+    ).text.strip()
+    assert confirmed_total == "₹4,999", (
+        f"Expected server-confirmed total ₹4,999, got {confirmed_total!r}"
+    )
+
+    payment_method = driver.find_element(
+        By.ID, "confirmed-payment-method"
+    ).text.strip()
+    assert "Cash on Delivery" in payment_method
+
+    wait.until(
+        lambda browser: browser.find_element(
+            By.ID, "cart-count"
+        ).text.strip() == "0"
+    )
+    assert home_page.get_cart_badge_count() == 0
