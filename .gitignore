@@ -1,0 +1,44 @@
+# ==============================================================================
+# ShopSphere - Git Ignore Configuration
+# ==============================================================================
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python Bytecode and Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing and Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+test-results/
+screenshots/
+
+# Environment Variables and Credentials
+.env
+.env.*
+!.env.example
+
+# Logs and Databases
+*.log
+*.sqlite3
+instance/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# IDE & Editor Temporary Files (keep local settings out of repo)
+.idea/
+*.swp
+*.swo

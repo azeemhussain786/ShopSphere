@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopSphere - Modern E-Commerce</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body id="shopsphere-body">
+
+    <!-- Top Navigation Bar -->
+    <header class="navbar" id="main-navbar" data-testid="navbar">
+        <div class="nav-container">
+            <a href="/" class="brand-logo" id="brand-logo" data-testid="brand-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Shop<span class="text-accent">Sphere</span></span>
+            </a>
+
+            <!-- Search Bar -->
+            <div class="search-container" id="search-container">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    data-testid="search-input" 
+                    placeholder="Search 18+ products across categories..." 
+                    autocomplete="off"
+                />
+                <button id="search-btn" data-testid="search-btn" aria-label="Search">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Nav Actions (Cart Open Button) -->
+            <div class="nav-actions">
+                <button class="cart-btn" id="nav-cart-btn" data-testid="cart-button" title="View Shopping Cart" aria-label="Open Cart">
+                    <span class="cart-icon">🛒</span>
+                    <span class="cart-label">Cart</span>
+                    <span class="cart-badge" id="cart-count" data-testid="cart-badge">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Toast for Dynamic Feedback -->
+    <div id="notification-toast" class="toast hidden" data-testid="notification-toast" role="status" aria-live="polite">
+        <span class="toast-indicator"></span>
+        <span id="toast-message" data-testid="toast-message">Item added to cart</span>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <!-- Hero Banner Section -->
+        <section class="hero-section" id="hero-banner" data-testid="hero-section">
+            <div class="hero-content">
+                <span class="hero-tag" id="hero-tag">🔥 Wipro Portfolio Project Edition</span>
+                <h1 class="hero-title" id="hero-title">Elevate Your Everyday Tech & Lifestyle Setup</h1>
+                <p class="hero-subtitle" id="hero-subtitle">
+                    Explore curated essentials across Gadgets, Smart Home, Fitness, and more with transparent INR pricing.
+                </p>
+                <div class="hero-buttons">
+                    <a href="#catalogue" class="btn btn-primary" id="hero-shop-btn" data-testid="hero-shop-btn">Explore Catalogue</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Product Catalogue Section -->
+        <section class="catalogue-section" id="catalogue" data-testid="catalogue-section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title" id="catalogue-heading" data-testid="catalogue-title">Product Catalogue</h2>
+                    <p class="section-subtitle">Believable demo inventory tested with automated Selenium test suites</p>
+                </div>
+
+                <!-- Sorting Controls -->
+                <div class="catalogue-controls">
+                    <div class="sort-wrapper">
+                        <label for="sort-select" class="sort-label">Sort By:</label>
+                        <select id="sort-select" class="sort-select" data-testid="sort-select">
+                            <option value="default">Featured</option>
+                            <option value="price-low">Price: Low to High</option>
+                            <option value="price-high">Price: High to Low</option>
+                            <option value="rating-high">Highest Rated</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Filter Bar -->
+            <div class="filter-bar" id="category-filter-bar" data-testid="category-filter-bar">
+                <button class="filter-pill active" id="filter-all" data-testid="filter-btn-all" data-category="all">All</button>
+                {% for cat in categories %}
+                <button 
+                    class="filter-pill" 
+                    id="filter-{{ cat.lower() | replace(' ', '-') }}" 
+                    data-testid="filter-btn-{{ cat.lower() | replace(' ', '-') }}" 
+                    data-category="{{ cat }}"
+                >
+                    {{ cat }}
+                </button>
+                {% endfor %}
+            </div>
+
+            <!-- Active Product Count -->
+            <div class="product-status-bar">
+                <span class="product-count" id="product-count" data-testid="product-count">Showing {{ products | length }} products</span>
+            </div>
+
+            <!-- Product Cards Grid -->
+            <div class="products-grid" id="products-grid" data-testid="products-grid">
+                {% for product in products %}
+                <article 
+                    class="product-card" 
+                    id="product-card-{{ product.id }}" 
+                    data-testid="product-card" 
+                    data-id="{{ product.id }}"
+                    data-category="{{ product.category }}"
+                    data-price="{{ product.price }}"
+                    data-rating="{{ product.rating }}"
+                    data-name="{{ product.name | lower }}"
+                >
+                    <div class="product-badge-wrap">
+                        <span class="product-badge" id="product-badge-{{ product.id }}">{{ product.badge }}</span>
+                    </div>
+
+                    <div class="product-image-container">
+                        <img 
+                            src="{{ product.image_url }}" 
+                            alt="{{ product.name }}" 
+                            class="product-img" 
+                            id="product-img-{{ product.id }}"
+                            loading="lazy"
+                            onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'200\' viewBox=\'0 0 300 200\' fill=\'%23f1f5f9\'><rect width=\'300\' height=\'200\' fill=\'%23e2e8f0\'/><text x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%230284c7\' font-family=\'sans-serif\' font-size=\'16\' font-weight=\'bold\'>ShopSphere Item</text></svg>';"
+                        >
+                    </div>
+
+                    <div class="product-info">
+                        <div class="product-category" id="product-category-{{ product.id }}">{{ product.category }}</div>
+                        <h3 class="product-title" id="product-title-{{ product.id }}" data-testid="product-title">{{ product.name }}</h3>
+                        <p class="product-desc" id="product-desc-{{ product.id }}">{{ product.description }}</p>
+
+                        <div class="product-meta">
+                            <span class="product-rating" id="product-rating-{{ product.id }}" data-testid="product-rating">
+                                ⭐ {{ product.rating }} <span class="review-count">({{ product.reviews_count }} reviews)</span>
+                            </span>
+                        </div>
+
+                        <div class="product-footer">
+                            <div class="price-container">
+                                <span class="current-price" id="product-price-{{ product.id }}" data-testid="product-price">₹{{ "{:,}".format(product.price) }}</span>
+                                <span class="original-price" id="original-price-{{ product.id }}">₹{{ "{:,}".format(product.original_price) }}</span>
+                            </div>
+                            <button 
+                                class="btn btn-add-cart" 
+                                id="add-to-cart-{{ product.id }}" 
+                                data-testid="add-to-cart-btn"
+                                data-product-id="{{ product.id }}" 
+                                data-product-name="{{ product.name }}"
+                                data-product-price="{{ product.price }}"
+                                data-product-image="{{ product.image_url }}"
+                            >
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            <!-- Empty State Message when no search/filter results -->
+            <div id="no-products-msg" class="no-products hidden" data-testid="no-products-message">
+                <p class="no-products-icon">🔍</p>
+                <h3>No matching products found</h3>
+                <p>Try searching for a different keyword or resetting your category filter.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Cart Drawer Backdrop Overlay -->
+    <div id="cart-backdrop" class="cart-backdrop hidden" data-testid="cart-backdrop"></div>
+
+    <!-- Sliding Cart Drawer -->
+    <aside id="cart-drawer" class="cart-drawer" data-testid="cart-drawer" aria-label="Shopping Cart Drawer">
+        <div class="cart-drawer-header">
+            <div class="cart-drawer-title-wrap">
+                <h2 id="cart-title" class="cart-drawer-title" data-testid="cart-title">Your Cart</h2>
+                <span id="cart-items-total-badge" class="cart-items-total-badge">0 items</span>
+            </div>
+            <button id="cart-close-btn" class="cart-close-btn" data-testid="cart-close-btn" aria-label="Close Shopping Cart">
+                &times;
+            </button>
+        </div>
+
+        <div class="cart-drawer-body">
+            <!-- Empty Cart State -->
+            <div id="cart-empty-state" class="cart-empty-state" data-testid="cart-empty-state">
+                <div class="empty-icon">🛍️</div>
+                <h3>Your cart is empty</h3>
+                <p>Looks like you haven't added anything yet. Explore our catalogue to discover great deals!</p>
+                <button id="cart-start-shopping-btn" class="btn btn-primary" data-testid="start-shopping-btn">Start Shopping</button>
+            </div>
+
+            <!-- Cart Items Container -->
+            <div id="cart-items-container" class="cart-items-container hidden" data-testid="cart-items-container">
+                <!-- Dynamically rendered by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Cart Drawer Footer -->
+        <div id="cart-drawer-footer" class="cart-drawer-footer hidden">
+            <div class="cart-summary-row">
+                <span class="summary-label">Subtotal</span>
+                <span class="summary-value" id="cart-subtotal" data-testid="cart-subtotal">₹0</span>
+            </div>
+            <div class="cart-summary-row">
+                <span class="summary-label">Standard Delivery</span>
+                <span class="summary-value text-free">FREE</span>
+            </div>
+            <div class="cart-summary-divider"></div>
+            <div class="cart-summary-row total-row">
+                <span class="total-label">Total Amount</span>
+                <span class="total-value" id="cart-total" data-testid="cart-total">₹0</span>
+            </div>
+
+            <button id="cart-checkout-btn" class="btn btn-checkout" data-testid="checkout-btn">
+                Proceed to Checkout
+            </button>
+            <p class="checkout-disclaimer">⚡ Portfolio Demo: No payment gateway or real transactions.</p>
+        </div>
+    </aside>
+
+    <!-- Demo Checkout Modal Backdrop -->
+    <div id="checkout-modal-backdrop" class="modal-backdrop hidden" data-testid="checkout-backdrop"></div>
+
+    <!-- Demo Checkout Modal -->
+    <div id="checkout-modal" class="checkout-modal hidden" data-testid="checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
+        <div class="checkout-modal-header">
+            <div class="checkout-modal-title-wrap">
+                <span class="checkout-icon">📦</span>
+                <h2 id="checkout-modal-title" class="checkout-modal-title" data-testid="checkout-modal-title">Demo Checkout</h2>
+            </div>
+            <button id="checkout-modal-close-btn" class="modal-close-btn" data-testid="checkout-modal-close-btn" aria-label="Close Checkout Modal">&times;</button>
+        </div>
+
+        <div class="checkout-modal-body">
+            <!-- Form View -->
+            <div id="checkout-form-view" class="checkout-form-view" data-testid="checkout-form-view">
+                <div class="checkout-summary-banner">
+                    <div>
+                        <span class="summary-banner-label">Order Total (Free Shipping)</span>
+                        <div id="checkout-summary-total" class="summary-banner-amount" data-testid="checkout-summary-total">₹0</div>
+                    </div>
+                    <span id="checkout-summary-items-count" class="summary-banner-badge">0 items</span>
+                </div>
+
+                <form id="demo-checkout-form" onsubmit="return false;">
+                    <div class="form-group">
+                        <label for="checkout-name" class="form-label">Full Name *</label>
+                        <input type="text" id="checkout-name" class="form-input" data-testid="checkout-name" placeholder="e.g. Rahul Sharma" value="Rahul Sharma" required />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="checkout-email" class="form-label">Email Address</label>
+                            <input type="email" id="checkout-email" class="form-input" data-testid="checkout-email" placeholder="rahul@example.com" value="rahul.sharma@example.com" />
+                        </div>
+                        <div class="form-group">
+                            <label for="checkout-phone" class="form-label">Phone Number</label>
+                            <input type="tel" id="checkout-phone" class="form-input" data-testid="checkout-phone" placeholder="+91 98765 43210" value="+91 98765 43210" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="checkout-address" class="form-label">Delivery Address *</label>
+                        <textarea id="checkout-address" class="form-input" data-testid="checkout-address" rows="2" placeholder="Street, Building, City, Pincode" required>Flat 402, Green Glen Layout, Bellandur, Bengaluru - 560103</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Payment Method (Simulation)</label>
+                        <div class="payment-options">
+                            <label class="payment-card selected" id="label-pay-cod">
+                                <input type="radio" name="payment-method" id="pay-cod" value="cod" checked data-testid="pay-cod" />
+                                <span>💵 Cash on Delivery (Demo)</span>
+                            </label>
+                            <label class="payment-card" id="label-pay-upi">
+                                <input type="radio" name="payment-method" id="pay-upi" value="upi" data-testid="pay-upi" />
+                                <span>📱 UPI Simulation (Demo)</span>
+                            </label>
+                        </div>
+                        <p class="payment-note">🔒 Safe Testing: No card details or real payments are ever collected.</p>
+                    </div>
+
+                    <div class="checkout-actions">
+                        <button type="button" id="place-order-btn" class="btn btn-checkout" data-testid="place-order-btn">
+                            Place Demo Order
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Success Confirmation View -->
+            <div id="checkout-success-view" class="checkout-success-view hidden" data-testid="checkout-success-view">
+                <div class="success-icon">🎉</div>
+                <h3 class="success-title">Order Placed Successfully!</h3>
+                <p class="success-msg">Your demo order has been confirmed and simulated.</p>
+
+                <div class="order-receipt-card">
+                    <div class="receipt-row">
+                        <span>Order Reference:</span>
+                        <strong id="confirmed-order-id" class="order-id-badge" data-testid="confirmed-order-id">SP-20261</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Customer Name:</span>
+                        <span id="confirmed-customer-name">Rahul Sharma</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Amount Confirmed:</span>
+                        <strong id="confirmed-order-total" class="text-accent">₹0</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Payment Mode:</span>
+                        <span id="confirmed-payment-method">Cash on Delivery</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Status:</span>
+                        <span class="status-confirmed">Confirmed (Demo)</span>
+                    </div>
+                </div>
+
+                <button id="order-continue-btn" class="btn btn-primary" data-testid="order-continue-btn">
+                    Continue Shopping
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer" id="main-footer" data-testid="main-footer">
+        <div class="footer-container">
+            <p>&copy; 2026 ShopSphere E-Commerce. Developed for Wipro Placement Portfolio.</p>
+            <p class="footer-subtext">Built with Flask &bull; Tested with Selenium WebDriver &bull; Python 3.13</p>
+        </div>
+    </footer>
+
+    <!-- Interactive Client-side Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
