@@ -1,0 +1,3 @@
+"""
+ShopSphere Test Suite Package
+"""

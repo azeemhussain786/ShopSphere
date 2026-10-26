@@ -14,13 +14,15 @@ __pycache__/
 *$py.class
 *.so
 
-# Testing and Coverage
+# Testing, Coverage and Diagnostics
 .pytest_cache/
 htmlcov/
 .coverage
 .coverage.*
 test-results/
+test-results/screenshots/
 screenshots/
+reports/
 
 # Environment Variables and Credentials
 .env
