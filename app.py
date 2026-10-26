@@ -277,28 +277,76 @@ def api_products():
 @app.route("/api/checkout", methods=["POST"])
 def api_checkout():
     """
-    Demo Checkout API endpoint.
-    Validates cart items and returns a simulated order confirmation.
-    Does NOT process real payments or collect sensitive financial data.
+    Validate cart contents against the server-side product catalogue.
+    Calculate prices on the server; never trust client-submitted totals.
+    This is a simulated checkout and does not process real payments.
     """
-    data = request.get_json(silent=True) or {}
-    items = data.get("items", [])
-    
-    if not items:
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
         return jsonify({
             "status": "error",
-            "message": "Cart is empty. Please add products before placing an order."
+            "message": "Request body must be a valid JSON object."
         }), 400
 
-    order_id = f"SP-{random.randint(10000, 99999)}"
+    items = data.get("items")
+
+    if not isinstance(items, list) or not items:
+        return jsonify({
+            "status": "error",
+            "message": "Cart must contain at least one valid item."
+        }), 400
+
+    products_by_id = {product["id"]: product for product in PRODUCTS}
+    total_amount = 0
+
+    for item in items:
+        if not isinstance(item, dict):
+            return jsonify({
+                "status": "error",
+                "message": "Each cart item must be a JSON object."
+            }), 400
+
+        product_id = item.get("id")
+        quantity = item.get("quantity")
+
+        if isinstance(product_id, bool) or not isinstance(product_id, int):
+            return jsonify({
+                "status": "error",
+                "message": "Each cart item must have an integer product ID."
+            }), 400
+
+        if product_id not in products_by_id:
+            return jsonify({
+                "status": "error",
+                "message": f"Product ID {product_id} does not exist."
+            }), 400
+
+        if (
+            isinstance(quantity, bool)
+            or not isinstance(quantity, int)
+            or quantity <= 0
+        ):
+            return jsonify({
+                "status": "error",
+                "message": "Quantity must be a positive whole number."
+            }), 400
+
+        product = products_by_id[product_id]
+        total_amount += product["price"] * quantity
+
     customer_name = data.get("customer_name", "Valued Customer")
-    total_amount = data.get("total_amount", 0)
+
+    if not isinstance(customer_name, str) or not customer_name.strip():
+        customer_name = "Valued Customer"
+
+    order_id = f"SP-{random.randint(10000, 99999)}"
 
     return jsonify({
         "status": "success",
         "order_id": order_id,
         "message": f"Demo order {order_id} placed successfully!",
-        "customer_name": customer_name,
+        "customer_name": customer_name.strip(),
         "total_amount": total_amount,
         "note": "Portfolio Demo: No real financial transaction occurred."
     })
